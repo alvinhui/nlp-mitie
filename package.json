@@ -1,0 +1,32 @@
+{
+  "name": "nlp-mitie",
+  "version": "0.0.2",
+  "description": "A node binding for the MIT Information Extraction library",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "config": "node-gyp configure",
+    "rebuild": "rm -rf build && node-gyp rebuild",
+    "prepublishOnly": "npm run rebuild"
+  },
+  "dependencies": {
+    "bindings": "~1.2.1",
+    "nan": "^2.0.0"
+  },
+  "devDependencies": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:alvinhui/nlp-mitie.git"
+  },
+  "engines": {
+    "node": ">= 8.0.0"
+  },
+  "keywords": [
+    "NLP",
+    "MITIE"
+  ],
+  "author": "alvin.hui@qq.com",
+  "license": "MIT"
+}
