@@ -1,0 +1,83 @@
+sudo: false
+language: cpp
+compiler: gcc
+
+os:
+  - linux
+  - osx
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-4.9
+      - g++-4.9
+
+env:
+  matrix:
+    - export NODE_VERSION="0.10"
+    - export NODE_VERSION="0.12"
+    - export NODE_VERSION="4"
+    - export NODE_VERSION="5"
+    - export NODE_VERSION="6"
+    - export NODE_VERSION="7"
+    - export NODE_VERSION="8"
+  global:
+    - secure: VHofhdIkjF9xTKFBLtMrV6n8/PZ9s6RogmuIhtbbJ6M6tCIbjKAFRwiWviRTe5DSqrquVbxB9bzcEi8yn1T5hg1ZBJ/sNCTMNvsZpBJHWLi6oMoHC2SMQ81ohBql/wCNy9NkrAanzUXXIeDxcdfQ0sQsWYRyxfqPntrmS7ueqxELlzsOfAUBLol0ZRNmCgT2ZcOfPC9pppTaX1q8rr3DH73l5USCL4Zulsp3AcBh5zyUHftJzePGhwy+LjziyYl/1khN8wrXXbg/oL7vr54dxAM59H2MYLdBskS0EEsXp6xnNuOVcoLJiCvg5NsaJelwGBGJNg8EvWxOIwS1ij8qe3kIMqKdAeFeSLi85Up1ApVZqTgOnD5uPd5yA26sVYFdcszkGOnsbQmI4NSCtfNMuIyWky8skagjKbkZ/hVHiN997hMb26NRrrCFsoFxBZTvaSQzIsFdAeWapeaaRcr0lhGe/GtQbIOfr8xv8qLyx6pW32EYS3F9lZtuCS5JkqS55JmguZYlTOvom1yLuqRHa82vNaKr7EdtDOUO3hzM2Qck2UZC0p0rmaUbTsXJtwLs1loNNqMi8RI3AUp0q3u6hsyavwQHPOv7AHbV1HxiUOSfI+2ZJk9UXsklaW62AFEIotHfQ+PC+QIYnWJmO2bVUXeeOBflU7rHCyzdZQGxFNo=
+    - secure: CuGcTY6xALyx376TgiYb8rhqPy4xTCKHXZpH0nEkws/mI53EVaFXtWwVLQNYVrlBld61nqVDSSDV+EaGQuzYX63q2YnRexOa9+rBaBbU5p39R2TALc+1WplgIHvfu7Z2OMkkAfZdtlPJ1a3LstAUc88RGu7pYG0xxMWa1nbHi9fhQ5372lWkj+vab7DmmpQhNmAVWHFpgv3dp2yZZZ4w2Sk/uR3uKbUBJ4kt0gLMKWDspRiipQjKg89d918jSMDhJRoU2hDYeJHM9wokDFdeBtI+iIMnSJiVOteIKiEe/ILXi4/PuScSSrk+kPK/SnhukyilxaHe8eGepO1ChLhILyB/tTSgxRfMjLdkU2fl/H8rZT2rx5EJLL5ZK5qz67cyUCO9UzofUZ27kSt36Wyvk+Sphbj+MLduI0b86zK698MoJef7GamSPGQRQMZozcjOimzGzH5pk2Zsc14lEJCPA9QQjTZAB8ahY79FWvJcKoCK277d/J2vUePm9cHPBbtlksO/LVawp7VnJghWP5GCDevoZyd5AkCBkvuNDRLpuCVqQk75WA9a70+6dXA9oFdpjWfU1+zSmDsgxGZW1rh2lDlGfVRy/m8CstrkdPs2TYvU60fPsj2+UrrzO1XqB1FQxc2zKs6q/Dskzaon9NEEO8darrJXlDcUk8EuxM0X2hQ=
+
+
+before_install:
+- if [[ $(uname -s) == 'Linux' ]]; then
+    export CC=/usr/bin/gcc-4.9;
+    export CXX=/usr/bin/g++-4.9;
+  fi;
+  
+- rm -rf ~/.nvm/ && git clone --depth 1 "https://github.com/creationix/nvm.git" ~/.nvm
+- source ~/.nvm/nvm.sh
+- nvm install $NODE_VERSION
+- nvm use $NODE_VERSION
+
+- if [ $NODE_VERSION == "0.10" ]; then
+    npm -g install npm@latest-2;
+  fi
+
+# get commit message
+- COMMIT_MESSAGE=$(git show -s --format=%B $TRAVIS_COMMIT | tr -d '\n')
+# put local node-pre-gyp on PATH
+- export PATH=./node_modules/.bin/:$PATH
+# put global node-gyp on PATH
+- npm install node-gyp -g
+# figure out if we should publish
+- PUBLISH_BINARY=false
+# if we are building a tag then publish
+- if [[ $TRAVIS_BRANCH == `git describe --tags --always HEAD` ]]; then PUBLISH_BINARY=true; fi;
+# or if we put [publish binary] in the commit message
+- if test "${COMMIT_MESSAGE#*'[publish binary]'}" != "$COMMIT_MESSAGE"; then PUBLISH_BINARY=true; fi;
+
+install:
+# ensure source install works
+- npm install --build-from-source
+# test our module
+- node index.js
+
+before_script:
+# if publishing, do it
+- if [[ $PUBLISH_BINARY == true ]]; then node-pre-gyp package publish; fi;
+# cleanup
+- node-pre-gyp clean
+- node-gyp clean
+
+script:
+# if publishing, test installing from remote
+- INSTALL_RESULT=0
+- if [[ $PUBLISH_BINARY == true ]]; then INSTALL_RESULT=$(npm install --fallback-to-build=false > /dev/null)$? || true; fi;
+# if install returned non zero (errored) then we first unpublish and then call false so travis will bail at this line
+- if [[ $INSTALL_RESULT != 0 ]]; then echo "returned $INSTALL_RESULT";node-pre-gyp unpublish;false; fi
+# If success then we arrive here so lets clean up
+- node-pre-gyp clean
+
+after_success:
+# if success then query and display all published binaries
+- node-pre-gyp info
