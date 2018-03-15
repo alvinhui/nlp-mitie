@@ -5,11 +5,9 @@
       "sources": [
         "src/mitie.cc",
         "src/named_entity_extractor.cc",
-        "src/text_categorizer.cc",
         "src/ner_trainer.cc",
         "src/ner_training_instance.cc",
         "src/total_word_feature_extractor.cc",
-        "src/text_categorizer_trainer.cc",
       ],
       'xcode_settings': {
         'OTHER_CPLUSPLUSFLAGS': [
